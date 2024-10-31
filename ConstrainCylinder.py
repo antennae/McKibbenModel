@@ -9,6 +9,7 @@ License : Non définie, mais développé dans une démarche Open-Source et Logic
  # coding=utf-8
 
 import Sofa
+import Sofa.constants.Key as Key
 import array
 import numpy as np
 from splib3.topology import remeshing as rf
@@ -16,6 +17,56 @@ from stl import mesh
 from math import sin,cos, sqrt, acos, radians, dist, ceil
 import math
 import time
+
+ELONGATION = True # True = modèle McKibben en élongation, sinon False, en compression
+
+
+class PressureController(Sofa.Core.Controller): # TODO : ATTENTION : avec le dyn_flag, la pression max, min, et le pas sont multipié par dt. On redivise par dt pour les pressions soient bonnes à l'affichage. Tout est juste, mais du pint de vue du composant, tout est divisé en 2 (la moitié dans stiff_module, l'autre dans le composant = Pas cool, il faudrait mieux factoriser pour rendre le composant réutilisable)
+    """
+        FR :
+        Fonction pour pouvoir modifier les pressions appliqués par le clavier
+            INPUT : 
+            pas = step, incrément en pression (kPa) à chaque frappe de clavier
+            module = variable stiff qui contient toutes les données du robot
+            parent = noeud parent des cavités pour s'y connecter
+
+        EN :
+        Function to be able to modify the pressures applied by the keyboard
+             INPUT:
+             pas = step, increment in pressure (kPa) with each keystroke
+             module = variable stiff which contains all the data of the robot
+             parent = parent node of the cavities to connect them
+
+        Exemple : rootNode.addObject(StiffController(pas=pas,module = stiff,parent = stiff_flop))
+    """
+
+    def __init__(self,pas,parent,node2 = "null",*args, **kwargs):
+
+            Sofa.Core.Controller.__init__(self,args,kwargs)
+
+            self.pressure = parent.getObject('SPC')
+            self.flag = 0;
+            self.pas = pas
+            self.max_pression = 300
+            
+
+    def onKeypressedEvent(self,e):
+    
+            pressureValue = self.pressure.value.value[0]
+
+            if e["key"] == Key.A:
+                pressureValue += self.pas
+                # print('===========D')
+                if pressureValue > self.max_pression:
+                    pressureValue= self.max_pression
+            if e["key"] == Key.Q:
+                pressureValue -= self.pas
+                if pressureValue < 0:
+                    pressureValue = 0
+                        
+            self.pressure.value =  [pressureValue]
+            print('Pression cavité ', pressureValue)        
+
 
 def createCavity(parent,name_c,i,cavity_model,act_flag): # for v1 -------
 
@@ -41,7 +92,7 @@ def createCavity(parent,name_c,i,cavity_model,act_flag): # for v1 -------
     if act_flag == 0 :
         bellowNode.addObject('SurfacePressureActuator', name='SPC', template = 'Vec3d',triangles='@chambreAMesh'+str(i+1)+'.triangles',minPressure = 0,maxPressure = 300)#,maxPressureVariation = 20)#,valueType=self.value_type)
     elif  act_flag == 1 :
-        bellowNode.addObject('SurfacePressureConstraint', name='SPC', triangles='@chambreAMesh'+str(i+1)+'.triangles', value=50,minPressure = 0,maxPressure = 300, valueType="pressure" )#,maxPressureVariation = 20)#,
+        bellowNode.addObject('SurfacePressureConstraint', name='SPC', triangles='@chambreAMesh'+str(i+1)+'.triangles', value=0,minPressure = 0,maxPressure = 300, valueType="pressure" )#,maxPressureVariation = 20)#,
 
     bellowNode.init()
     BaseBox = bellowNode.addObject('BoxROI', name='boxROI_base', box=[-8, -8, -1, 8, 8, 1], drawBoxes=True, strict=False,drawTetrahedra = False) # si autom complète, mettre 8 dépendant des dimensions du robot
@@ -215,15 +266,18 @@ def createScene(rootNode):
 
     points = rootNode.cavity2.meshLoader.position.value
 
-    ConstrainCavity(points = points,parent=bellowNode,axis = 0,tolerance = 0.2)
-    ConstrainCavity(points = points,parent=bellowNode,axis = 1,tolerance = 0.2)
-
+    if ELONGATION == False :
+        ConstrainCavity(points = points,parent=bellowNode,axis = 0,tolerance = 0.2)
+        ConstrainCavity(points = points,parent=bellowNode,axis = 1,tolerance = 0.2)
+    else :
     ## Elongation
-    # ConstrainCavity(points = points,parent=bellowNode,axis = 2,tolerance = 0.2)
+        ConstrainCavity(points = points,parent=bellowNode,axis = 2,tolerance = 0.2)
 
     bellowNode.addObject('SparseLDLSolver', name='ldlsolveur',template="CompressedRowSparseMatrixMat3x3d")
     bellowNode.addObject('GenericConstraintCorrection')
     bellowNode.addObject('EulerImplicitSolver', firstOrder='1', vdamping=0)
+
+    rootNode.addObject(PressureController(pas=10,parent = bellowNode))
 
 
     # return rootNode
