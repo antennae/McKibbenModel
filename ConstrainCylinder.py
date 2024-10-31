@@ -18,7 +18,7 @@ from math import sin,cos, sqrt, acos, radians, dist, ceil
 import math
 import time
 
-ELONGATION = True # True = modèle McKibben en élongation, sinon False, en compression
+ELONGATION = False # True = modèle McKibben en élongation, sinon False, en compression
 
 
 class PressureController(Sofa.Core.Controller): # TODO : ATTENTION : avec le dyn_flag, la pression max, min, et le pas sont multipié par dt. On redivise par dt pour les pressions soient bonnes à l'affichage. Tout est juste, mais du pint de vue du composant, tout est divisé en 2 (la moitié dans stiff_module, l'autre dans le composant = Pas cool, il faudrait mieux factoriser pour rendre le composant réutilisable)
@@ -195,6 +195,11 @@ def AddConstrainCircles(parent,circle_tab,circle_ind_tab,conv_tab,axis,stiffness
 
 def ConstrainCavity(points,parent,indices=None,axis = 0,tolerance = 0,spring_stiffness=10000): # A mettre dans SPLIB ?
     """
+    parent = noeud SOFA sur lequel on va mettre les resorts 
+    axis = axe selon lequel on va placer les cercles de ressorts successifs
+    tolerance = distance (dépend du maillage, généralement en mm) maximale selon laquelle on va considérer deux points comme étant à une position simimlaire selon l'axe axis, et qui si ils sont assez proches formeront un deux points successifs de la ligne de ressort.
+
+
     Fonction qui va trier les points et le maillage passé en argument afin d'ajouter des ressorts pour contraindre la cavité et renvoyer les points, 
     le maillage et le tableau de conversion pour créer le noeud qui contient la cavité.
     """
