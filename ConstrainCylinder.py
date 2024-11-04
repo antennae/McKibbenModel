@@ -167,8 +167,8 @@ def createScene(rootNode):
     points = rootNode.cavity2.meshLoader.position.value
 
     if ELONGATION == False :
-        constrain.ConstrainCavity(points = points,parent=bellowNode,axis = 0,tolerance = 0.2)
-        constrain.ConstrainCavity(points = points,parent=bellowNode,axis = 1,tolerance = 0.2)
+        constrain.ConstrainFromCavity(cavity_node=bellowNode,axis = 0,tolerance = 0.2)
+        constrain.ConstrainFromCavity(cavity_node=bellowNode,axis = 1,tolerance = 0.2)
     else :
     ## Elongation
         constrain.ConstrainCavity(points = points,parent=bellowNode,axis = 2,tolerance = 0.2)

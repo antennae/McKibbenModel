@@ -96,6 +96,22 @@ def AddConstrainCircles(parent,circle_tab,circle_ind_tab,conv_tab,axis,stiffness
                 # new_ind_tab_2 = rf.shift_tab(tab= new_ind_tab) # tableau des indices décalés d'un point, pour relier chaque point du cercle au point suivant
                 NoeudCercle.addObject("MeshSpringForceField", name="Springs" ,stiffness= stiffness,indices1 =new_ind_tab[ind_0], indices2 = new_ind_tab[ind_1] ,length = d)# damping="4"
 
+def ConstrainFromCavity(cavity_node,indices=None,axis = 0,tolerance = 0,spring_stiffness=10000): # A mettre dans SPLIB ?
+    """
+    cavity_node = noeud SOFA sur lequel on va récupérer la position des points puis mettre les resorts 
+    axis = axe selon lequel on va placer les cercles de ressorts successifs
+    tolerance = distance (dépend du maillage, généralement en mm) maximale selon laquelle on va considérer deux points comme étant à une position simimlaire selon l'axe axis, et qui si ils sont assez proches formeront un deux points successifs de la ligne de ressort.
+
+
+    Fonction qui va trier les points et le maillage passé en argument afin d'ajouter des ressorts pour contraindre la cavité et renvoyer les points, 
+    le maillage et le tableau de conversion pour créer le noeud qui contient la cavité.
+    """
+    points_node = cavity_node.getObject('meshLoader')
+    points = points_node.position.value
+    ConstrainCavity(points = points,parent=cavity_node,axis = axis,tolerance = tolerance)
+
+    # return [new_points, triangles,conv_tab]
+
 def ConstrainCavity(points,parent,indices=None,axis = 0,tolerance = 0,spring_stiffness=10000): # A mettre dans SPLIB ?
     """
     parent = noeud SOFA sur lequel on va mettre les resorts 
