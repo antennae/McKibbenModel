@@ -23,7 +23,7 @@ import ConstrainCylinder_Functions as constrain
 PLUGIN = True # True will required the updated version of soft robot plugin (python prefab)
 CONSTRAIN = True
 ELONGATION = True # True = modèle McKibben en élongation, sinon False, en compression
-INVERSE = True
+INVERSE = False
 
 if PLUGIN == True :
     from softrobots.actuators import pneumatic as pb
@@ -260,6 +260,12 @@ def createScene(rootNode):
             rootNode.addObject(GoalKeyboardController(goal_pas = 1,node = goal,name = 'goal'))
         else :
             pneumatic = pb.PneumaticCavity(surfaceMeshFileName=fichier, attachedTo=rootNode)
+            pneumatic.addObject('TriangleCollisionModel', moving='0', simulated='1') # For visualisation
+            pneumatic.addObject('TriangleFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.49,  youngModulus=100, thickness = 5) # stable youngModulus = 500 / réel ? = 103
+            pneumatic.addObject('UniformMass', totalMass=1000, rayleighMass = 0)
+            FixBasePosition(node = pneumatic)
+            rootNode.addObject('GenericConstraintSolver', maxIterations='100', tolerance = '0.0000001')
+            rootNode.addObject(pb.PressureController(pas=10,parent = pneumatic))
 
 
     if CONSTRAIN :
@@ -269,6 +275,7 @@ def createScene(rootNode):
         else :
         ## Elongation
             constrain.ConstrainFromCavity(cavity_node=pneumatic,axis = 2,tolerance = 0.2)
+
 
     pneumatic.addObject('SparseLDLSolver', name='ldlsolveur',template="CompressedRowSparseMatrixMat3x3d")
     pneumatic.addObject('EulerImplicitSolver', firstOrder='1', vdamping=0)
