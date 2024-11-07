@@ -23,10 +23,11 @@ import ConstrainCylinder_Functions as constrain
 PLUGIN = True # True will required the updated version of soft robot plugin (python prefab)
 CONSTRAIN = True
 ELONGATION = True # True = modèle McKibben en élongation, sinon False, en compression
-INVERSE = False
+INVERSE = True
 
 if PLUGIN == True :
     from softrobots.actuators import pneumatic as pb
+    from softrobots.actuators import constrain as cons
     from softrobots.inverse.actuators import pneumatic as i_pb
     from softrobots.inverse.effectors import effectorGoal as eG
 
@@ -231,7 +232,7 @@ def createScene(rootNode):
     fichier =  'cylinder_16_parts.stl' 
     # fichier =  'parametric_cavity_sliced2.stl'
 
-    if PLUGIN == False :
+    if PLUGIN == False : ##### Version du code autonome, appelant les fonctions écrites ici #################################################### 1
 
         pneumatic = createCavity(parent=rootNode,name_c="cavity",i=1,cavity_model=fichier,inverse_flag=INVERSE)
 
@@ -248,7 +249,14 @@ def createScene(rootNode):
             rootNode.addObject('GenericConstraintSolver', maxIterations='100', tolerance = '0.0000001')
             rootNode.addObject(PressureController(pas=10,parent = pneumatic))
 
-    else :
+        if CONSTRAIN :
+            if ELONGATION == False :
+                constrain.ConstrainFromCavity(cavity_node=pneumatic,axis = 0,tolerance = 0.2)
+                constrain.ConstrainFromCavity(cavity_node=pneumatic,axis = 1,tolerance = 0.2)
+            else :
+                constrain.ConstrainFromCavity(cavity_node=pneumatic,axis = 2,tolerance = 0.2) ## Elongation
+
+    else : ##### Version du code dépendant du code déporté dans les prefab python (a update TODO) ################################################# 1
         if INVERSE :
             pneumatic = i_pb.PneumaticCavity(surfaceMeshFileName=fichier, attachedTo=rootNode)
             pneumatic.addObject('TriangleCollisionModel', moving='0', simulated='1') # For visualisation
@@ -267,14 +275,16 @@ def createScene(rootNode):
             rootNode.addObject('GenericConstraintSolver', maxIterations='100', tolerance = '0.0000001')
             rootNode.addObject(pb.PressureController(pas=10,parent = pneumatic))
 
+        # if CONSTRAIN :
+        #     print("tessst")
+        #     if ELONGATION == False :
+        #         cons.ConstrainFromCavity(cavity_node=pneumatic,axis = 0,tolerance = 0.2)
+        #         cons.ConstrainFromCavity(cavity_node=pneumatic,axis = 1,tolerance = 0.2)
+        #     else :
+        #         cons.ConstrainFromCavity(cavity_node=pneumatic,axis = 2,tolerance = 0.2) ## Elongation
+           ######################################################################################################################################## 1
 
-    if CONSTRAIN :
-        if ELONGATION == False :
-            constrain.ConstrainFromCavity(cavity_node=pneumatic,axis = 0,tolerance = 0.2)
-            constrain.ConstrainFromCavity(cavity_node=pneumatic,axis = 1,tolerance = 0.2)
-        else :
-        ## Elongation
-            constrain.ConstrainFromCavity(cavity_node=pneumatic,axis = 2,tolerance = 0.2)
+
 
 
     pneumatic.addObject('SparseLDLSolver', name='ldlsolveur',template="CompressedRowSparseMatrixMat3x3d")
