@@ -23,7 +23,7 @@ import ConstrainCylinder_Functions as constrain
 PLUGIN = True # True will required the updated version of soft robot plugin (python prefab)
 CONSTRAIN = True
 ELONGATION = True # True = modèle McKibben en élongation, sinon False, en compression
-INVERSE = True
+INVERSE = False
 
 if PLUGIN == True :
     from softrobots.actuators import pneumatic as pb
@@ -275,13 +275,12 @@ def createScene(rootNode):
             rootNode.addObject('GenericConstraintSolver', maxIterations='100', tolerance = '0.0000001')
             rootNode.addObject(pb.PressureController(pas=10,parent = pneumatic))
 
-        # if CONSTRAIN :
-        #     print("tessst")
-        #     if ELONGATION == False :
-        #         cons.ConstrainFromCavity(cavity_node=pneumatic,axis = 0,tolerance = 0.2)
-        #         cons.ConstrainFromCavity(cavity_node=pneumatic,axis = 1,tolerance = 0.2)
-        #     else :
-        #         cons.ConstrainFromCavity(cavity_node=pneumatic,axis = 2,tolerance = 0.2) ## Elongation
+        if CONSTRAIN :
+            if ELONGATION == False :
+                cons.ConstrainFromCavity(cavity_node=pneumatic,axis = 0,tolerance = 0.2)
+                cons.ConstrainFromCavity(cavity_node=pneumatic,axis = 1,tolerance = 0.2)
+            else :
+                cons.ConstrainFromCavity(cavity_node=pneumatic,axis = 2,tolerance = 0.2,print_flag = True) ## Elongation
            ######################################################################################################################################## 1
 
 
