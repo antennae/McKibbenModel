@@ -23,7 +23,7 @@ import ConstrainCylinder_Functions as constrain
 PLUGIN = True # True will required the updated version of soft robot plugin (python prefab)
 CONSTRAIN = True
 ELONGATION = True # True = modèle McKibben en élongation, sinon False, en compression
-INVERSE = False
+INVERSE = True
 
 if PLUGIN == True :
     from softrobots.actuators import pneumatic as pb
