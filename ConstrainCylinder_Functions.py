@@ -106,7 +106,7 @@ def ConstrainFromCavity(cavity_node,indices=None,axis = 0,tolerance = 0,spring_s
     Fonction qui va trier les points et le maillage passé en argument afin d'ajouter des ressorts pour contraindre la cavité et renvoyer les points, 
     le maillage et le tableau de conversion pour créer le noeud qui contient la cavité.
     """
-    points_node = cavity_node.getObject('meshLoader')
+    points_node = cavity_node.getObject('meshLoader') # Dépendant du nom du noeud qui contient les points ! #TODO (généraliser)
     points = points_node.position.value
     ConstrainCavity(points = points,parent=cavity_node,axis = axis,tolerance = tolerance)
 

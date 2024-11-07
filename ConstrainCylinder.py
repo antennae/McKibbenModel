@@ -21,7 +21,18 @@ import time
 import ConstrainCylinder_Functions as constrain
 
 ELONGATION = False # True = modèle McKibben en élongation, sinon False, en compression
+INVERSE = True
 
+def EffectorGoal(node, position,name,taille,solver=True): # => Factoriser avec EffectorGoal_Orientation ?
+    goal = node.addChild(name)
+    goal.addObject('MechanicalObject', name=name + 'M0', position=position)
+    goal.addObject('SphereCollisionModel', radius=taille)
+    if solver :
+        goal.addObject('EulerImplicitSolver', firstOrder=True)
+        goal.addObject('CGLinearSolver', iterations=100, threshold=1e-12, tolerance=1e-10) # ne sert à rien ?
+        goal.addObject('UncoupledConstraintCorrection')
+    # goal.addObject('RestShapeSpringsForceField', points=0, angularStiffness=1e5, stiffness=1e5)
+    return goal
 
 class PressureController(Sofa.Core.Controller): # TODO : ATTENTION : avec le dyn_flag, la pression max, min, et le pas sont multipié par dt. On redivise par dt pour les pressions soient bonnes à l'affichage. Tout est juste, mais du pint de vue du composant, tout est divisé en 2 (la moitié dans stiff_module, l'autre dans le composant = Pas cool, il faudrait mieux factoriser pour rendre le composant réutilisable)
     """
@@ -70,14 +81,14 @@ class PressureController(Sofa.Core.Controller): # TODO : ATTENTION : avec le dyn
             print('Pression cavité ', pressureValue)        
 
 
-def createCavity(parent,name_c,i,cavity_model,act_flag): # for v1 -------
+def createCavity(parent,name_c,i,cavity_model,inverse_flag = False): # for v1 -------
 
     """
     name__c : name of the created node
     i : cavity number
     cavity_model : cavity model filename (should be .stl)
-    act_flag = 0 : Inverse Control
-    act_flag = 1 : Direct Control
+    inverse_flag = 0 : Inverse Control
+    inverse_flag = 1 : Direct Control
 
     """
     bellowNode = parent.addChild(name_c+str(i+1))
@@ -91,9 +102,9 @@ def createCavity(parent,name_c,i,cavity_model,act_flag): # for v1 -------
     bellowNode.addObject('TriangleFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.49,  youngModulus=100, thickness = 5) # stable youngModulus = 500 / réel ? = 103
     bellowNode.addObject('UniformMass', totalMass=1000, rayleighMass = 0)
 
-    if act_flag == 0 :
+    if inverse_flag == True :
         bellowNode.addObject('SurfacePressureActuator', name='SPC', template = 'Vec3d',triangles='@chambreAMesh'+str(i+1)+'.triangles',minPressure = 0,maxPressure = 300)#,maxPressureVariation = 20)#,valueType=self.value_type)
-    elif  act_flag == 1 :
+    elif  inverse_flag == False :
         bellowNode.addObject('SurfacePressureConstraint', name='SPC', triangles='@chambreAMesh'+str(i+1)+'.triangles', value=0,minPressure = 0,maxPressure = 300, valueType="pressure" )#,maxPressureVariation = 20)#,
 
     bellowNode.init()
@@ -157,27 +168,37 @@ def createScene(rootNode):
     rootNode.addObject('FreeMotionAnimationLoop')
     rootNode.addObject('DefaultVisualManagerLoop')    
 
-    rootNode.addObject('GenericConstraintSolver', maxIterations='100', tolerance = '0.0000001')
 
     fichier =  'cylinder_16_parts.stl' 
     # fichier =  'parametric_cavity_sliced2.stl'
 
-    bellowNode = createCavity(parent=rootNode,name_c="cavity",i=1,cavity_model=fichier,act_flag=1)
-
-    points = rootNode.cavity2.meshLoader.position.value
+    bellowNode = createCavity(parent=rootNode,name_c="cavity",i=1,cavity_model=fichier,inverse_flag=INVERSE)
 
     if ELONGATION == False :
         constrain.ConstrainFromCavity(cavity_node=bellowNode,axis = 0,tolerance = 0.2)
         constrain.ConstrainFromCavity(cavity_node=bellowNode,axis = 1,tolerance = 0.2)
     else :
     ## Elongation
-        constrain.ConstrainCavity(points = points,parent=bellowNode,axis = 2,tolerance = 0.2)
+        constrain.ConstrainFromCavity(cavity_node=bellowNode,axis = 2,tolerance = 0.2)
+
+    if INVERSE :
+        goal = EffectorGoal(node=rootNode, position = [0,0,42],name = 'goal',taille = 2,solver = True)
+        controlledPoints = bellowNode.addChild('controlledPoints')
+        controlledPoints.addObject('MechanicalObject', name="actuatedPoints", template="Vec3",position=[0, 0, 42])#,rotation=[0, 90 ,0]) # classic
+        # controlledPoints.addObject('MechanicalObject', name="actuatedPoints", template="Rigid3",position=[0, 0, h_effector,0., 0., 0., 1.])#,rotation=[0, 90 ,0]) # rigid pour l'orientation
+        controlledPoints.addObject('PositionEffector', template="Vec3d", indices='0', effectorGoal="@../../goal/goalM0.position") # classic
+        controlledPoints.addObject('BarycentricMapping', mapForces=False, mapMasses=False)
+        rootNode.addObject('QPInverseProblemSolver', name="QP", printLog='0', saveMatrices = True ,epsilon = 0.01) # initialement epsilon = 0.001
+
+    else :
+        rootNode.addObject('GenericConstraintSolver', maxIterations='100', tolerance = '0.0000001')
+        rootNode.addObject(PressureController(pas=10,parent = bellowNode))
+
 
     bellowNode.addObject('SparseLDLSolver', name='ldlsolveur',template="CompressedRowSparseMatrixMat3x3d")
-    bellowNode.addObject('GenericConstraintCorrection')
     bellowNode.addObject('EulerImplicitSolver', firstOrder='1', vdamping=0)
+    bellowNode.addObject('GenericConstraintCorrection')
 
-    rootNode.addObject(PressureController(pas=10,parent = bellowNode))
 
 
     # return rootNode
