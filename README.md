@@ -15,6 +15,9 @@ runSofa ConstrainCylinder.py
 ## Parameters :
 
 PLUGIN - True will required the updated version of soft robot plugin (python prefab, not shared yet)
+
 CONSTRAIN - To choose if you add the deformation constrains
+
 ELONGATION - False = Classic McKibben - True = McKibben Actuator that elongate
+
 INVERSE - False = Direct control (CTRL + A = + 10 kPa ; CTRL + Q = - 10kPa) - True = Inverse Control (CTRL + G = increase height ; CTRL + B = reduce height)

@@ -22,7 +22,7 @@ import ConstrainCylinder_Functions as constrain
 
 PLUGIN = False # True will required the updated version of soft robot plugin (python prefab)
 CONSTRAIN = True
-ELONGATION = False # True = modèle McKibben en élongation, sinon False, en compression
+ELONGATION = True # True = modèle McKibben en élongation, sinon False, en compression
 INVERSE = False
 
 if PLUGIN == True :
