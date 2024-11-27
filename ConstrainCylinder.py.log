@@ -4,3 +4,7 @@
 
 --- NEW SESSION: 31/10/2024 16:43:05 ---
 /cavity2/chambreA2.showColor = 1 1 1 1
+
+--- NEW SESSION: 20/11/2024 14:11:46 ---
+/cavity2/Ressort0_0/Springs.spring = 105 87 10000 5 3
+/cavity2/Ressort0_0/Springs.lengths = 3
