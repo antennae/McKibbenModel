@@ -94,7 +94,7 @@ def AddConstrainCircles(parent,circle_tab,circle_ind_tab,conv_tab,axis,stiffness
                 d = [dist(p1,p2)] # on suppose ici que tous les points d'un cercle de la cavité sont espacés de la même distance => refaire un code qui place les ressorts 1 à 1 pour être utilisable pour toutes les géométries ?
                 NoeudCercle = parent.addChild("Ressort" + str(ind_cercle) + "_" +  str(u))
                 # new_ind_tab_2 = rf.shift_tab(tab= new_ind_tab) # tableau des indices décalés d'un point, pour relier chaque point du cercle au point suivant
-                NoeudCercle.addObject("MeshSpringForceField", name="Springs" ,stiffness= stiffness,indices1 =new_ind_tab[ind_0], indices2 = new_ind_tab[ind_1] ,length = d)# damping="4"
+                NoeudCercle.addObject("SpringForceField", name="Springs" ,stiffness= stiffness,indices1 =new_ind_tab[ind_0], indices2 = new_ind_tab[ind_1] ,length = d)# damping="4"
 
 def ConstrainFromCavity(cavity_node,indices=None,axis = 0,tolerance = 0,spring_stiffness=10000): # A mettre dans SPLIB ?
     """
