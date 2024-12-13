@@ -118,8 +118,8 @@ class PressureController(
 
     def onKeypressedEvent(self, e):
 
+        # SurfacePressureForceField
         pressureValue = self.pressure.pressure.value
-
         if e['key'] == Key.A:
             pressureValue += self.pas
             # print('===========D')
@@ -132,6 +132,22 @@ class PressureController(
 
         self.pressure.pressure.value = pressureValue
         print('Pression cavité ', pressureValue)
+
+        # # SurfacePressureActuator/Constraint
+        # pressureValue = self.pressure.value.value[0]
+
+        # if e['key'] == Key.A:
+        #     pressureValue += self.pas
+        #     # print('===========D')
+        #     if pressureValue > self.max_pression:
+        #         pressureValue = self.max_pression
+        # if e['key'] == Key.Q:
+        #     pressureValue -= self.pas
+        #     if pressureValue < 0:
+        #         pressureValue = 0
+
+        # self.pressure.value = [pressureValue]
+        # print('Pression cavité ', pressureValue)
 
 
 def FixBasePosition(node):
@@ -207,67 +223,53 @@ def createCavity(
         youngModulus=100,  # 'Pa'
         poissonRatio=0.49,
     )
+
     triangleIndices = list(range(len(bellowNode.MeshLoader.triangles)))
     bellowNode.addObject(
         'SurfacePressureForceField',
         name='SPC',
-        # triangleIndices='@topology.triangles',
         triangleIndices=triangleIndices,
-        # triangles='@chambreAMesh' + str(i + 1) + '.triangles',
         pressure=0,
     )
-
-    # MeshLoad = bellowNode.addObject(
-    #     'MeshSTLLoader',
-    #     filename=cavity_model,
-    #     flipNormals='0',
-    #     triangulate='true',
-    #     name='MeshLoader',
-    #     rotation=[0, 0, 0],
-    #     translation=[0, 0, 0],
-    # )  # , rotation=[self.ang_dec*self.i_cavity,0,0] if pre-rotated 3D model
-    # MeshLoad.init()
-    # points = MeshLoad.position.value
-    # triangles = MeshLoad.triangles.value
-    # bellowNode.addObject('MeshTopology', src='@MeshLoader', name='Cavity')
-    # bellowNode.addObject(
-    #     'MechanicalObject', name='chambreA' + str(i + 1), rotation=[0, 0, 0], template="Rigid3d"
-    # )  # ,translation = [0,0,h_module*i]) # 90 on y
-
-    # bellowNode.addObject('TriangleCollisionModel', moving='0', simulated='1')
-    # bellowNode.addObject(
-    #     'TriangleFEMForceField',
-    #     template='Vec3',
-    #     name='FEM',
-    #     method='large',
-    #     poissonRatio=0.49,
-    #     youngModulus=100,
-    #     thickness=5,
-    # )  # stable youngModulus = 500 / réel ? = 103
 
     # visu = bellowNode.addChild('Visu')
     # visu.addObject('OglModel', src=bellowNode.topology.getLinkPath())
     # visu.addObject('IdentityMapping')
 
+
+    # Can't use this because SurfacePressureModel in SoftRobot plugin
+    # only support Vec3 type
+    # chamberNode = bellowNode.addChild('ChamberNode')
+    # chamberNode.addObject(
+    #     'MeshTopology', name='topology', src='@../MeshLoader'
+    # )
+    # chamberNode.addObject(
+    #     'MechanicalObject',
+    #     name='chamber',
+    #     template='Vec3d',
+    # )
+
     # if inverse_flag == True:
-    #     bellowNode.addObject(
+    #     chamberNode.addObject(
     #         'SurfacePressureActuator',
     #         name='SPC',
     #         template='Vec3d',
-    #         triangles='@chambreAMesh' + str(i + 1) + '.triangles',
+    #         triangles='@MeshLoader.triangles',
     #         minPressure=0,
-    #         maxPressure=300,
+    #         maxPressure=3000,
     #     )  # ,maxPressureVariation = 20)#,valueType=self.value_type)
     # elif inverse_flag == False:
-    #     bellowNode.addObject(
+    #     chamberNode.addObject(
     #         'SurfacePressureConstraint',
     #         name='SPC',
-    #         triangles='@chambreAMesh' + str(i + 1) + '.triangles',
+    #         triangles='@MeshLoader.triangles',
     #         value=0,
     #         minPressure=0,
-    #         maxPressure=300,
-    #         valueType="pressure",
+    #         maxPressure=3000,
+    #         valueType='pressure',
     #     )  # ,maxPressureVariation = 20)#,
+    # # chamberNode.addObject('RigidMapping')
+    # chamberNode.addObject('BarycentricMapping')
 
     FixBasePosition(node=bellowNode)
 
@@ -386,7 +388,9 @@ def createScene(rootNode):
             maxIterations='100',
             tolerance='0.0000001',
         )
-        rootNode.addObject(PressureController(pas=100, parent=pneumatic))
+        rootNode.addObject(
+            PressureController(pas=100, parent=pneumatic)
+        )
 
     if CONSTRAIN:
         if HELIX:
