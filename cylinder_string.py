@@ -558,12 +558,12 @@ def createScene(rootNode):
                 if abs(p[2] - min_z) <= tolerance
             ]
             helix_points = []
-            num_turns = 4
+            num_turns = 2
             height = max(points, key=lambda p: p[2])[2] - min_z
             # num_points = len(bottom_points)
             num_points = 50
             angle_step = 2 * math.pi / num_points
-            helix_radius = 3.2
+            helix_radius = 3
             num_thread = 4
             phase_step = 2 * np.pi / num_thread
 
@@ -598,7 +598,7 @@ def createScene(rootNode):
                 helix_node.addObject(
                     'MeshSpringForceField',
                     name=f'helixA_spring_{n}',
-                    stiffness=10000,
+                    stiffness=100000,
                     damping=0.1,
                 )
                 helix_node.addObject('SkinningMapping')
@@ -634,7 +634,7 @@ def createScene(rootNode):
                 helix_node.addObject(
                     'MeshSpringForceField',
                     name=f'helixB_spring_{n}',
-                    stiffness=10000,
+                    stiffness=100000,
                     damping=0.1,
                 )
                 helix_node.addObject('SkinningMapping')
@@ -657,7 +657,7 @@ def createScene(rootNode):
                     ]
                     return points, triangles
 
-                for radius in [1.6, 3.2]:
+                for radius in [1.6, 3]:
                     # radius = 3.4  # Adjust as needed
                     num_segments = 16  # Adjust as needed
 
