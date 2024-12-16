@@ -9,6 +9,8 @@ from stl import mesh
 from math import sin, cos, sqrt, acos, radians, dist, ceil
 import math
 import time
+from splib3.numerics import Vec3, Quat, sdiv
+
 
 import ConstrainCylinder_Functions as constrain
 
@@ -90,21 +92,19 @@ class PressureController(
     Sofa.Core.Controller
 ):  # TODO : ATTENTION : avec le dyn_flag, la pression max, min, et le pas sont multipié par dt. On redivise par dt pour les pressions soient bonnes à l'affichage. Tout est juste, mais du pint de vue du composant, tout est divisé en 2 (la moitié dans stiff_module, l'autre dans le composant = Pas cool, il faudrait mieux factoriser pour rendre le composant réutilisable)
     """
-    FR :
-    Fonction pour pouvoir modifier les pressions appliqués par le clavier
-        INPUT :
-        pas = step, incrément en pression (kPa) à chaque frappe de clavier
-        module = variable stiff qui contient toutes les données du robot
-        parent = noeud parent des cavités pour s'y connecter
+        FR :
+        Fonction pour pouvoir modifier les pressions appliqués par le clavier
+            INPUT :
+            pas = step, incrément en pression (kPa) à chaque frappe de clavier
+            module = variable stiff qui contient toutes les données du robot
+            parent = noeud parent des cavités pour s'y connecter
 
-    EN :
-    Function to be able to modify the pressures applied by the keyboard
-         INPUT:
-         pas = step, increment in pressure (kPa) with each keystroke
-         module = variable stiff which contains all the data of the robot
-         parent = parent node of the cavities to connect them
+    def Rigidify(targetObject, sourceObje
+             pas = step, increment in pressure (kPa) with each keystroke
+             module = variable stiff which contains all the data of the robot
+             parent = parent node of the cavities to connect them
 
-    Exemple : rootNode.addObject(StiffController(pas=pas,module = stiff,parent = stiff_flop))
+        Exemple : rootNode.addObject(StiffController(pas=pas,module = stiff,parent = stiff_flop))
     """
 
     def __init__(self, pas, parent, node2='null', *args, **kwargs):
@@ -119,34 +119,148 @@ class PressureController(
     def onKeypressedEvent(self, e):
 
         # SurfacePressureForceField
-        # pressureValue = self.pressure.pressure.value
-        # if e['key'] == Key.A:
-        #     pressureValue += self.pas
-        #     # print('===========D')
-        #     if pressureValue > self.max_pression:
-        #         pressureValue = self.max_pression
-        # if e['key'] == Key.Q:
-        #     pressureValue -= self.pas
-        #     if pressureValue < 0:
-        #         pressureValue = 0
-
-        # self.pressure.pressure.value = pressureValue
-        # print('Pression cavité ', pressureValue)
-
-        pressureValue = self.pressure.value.value[0]
-
-        if e["key"] == Key.A:
+        pressureValue = self.pressure.pressure.value
+        if e['key'] == Key.A:
             pressureValue += self.pas
             # print('===========D')
             if pressureValue > self.max_pression:
                 pressureValue = self.max_pression
-        if e["key"] == Key.Q:
+        if e['key'] == Key.Q:
             pressureValue -= self.pas
             if pressureValue < 0:
                 pressureValue = 0
 
-        self.pressure.value = [pressureValue]
+        self.pressure.pressure.value = pressureValue
         print('Pression cavité ', pressureValue)
+
+        # pressureValue = self.pressure.value.value[0]
+
+        # if e["key"] == Key.A:
+        #     pressureValue += self.pas
+        #     # print('===========D')
+        #     if pressureValue > self.max_pression:
+        #         pressureValue = self.max_pression
+        # if e["key"] == Key.Q:
+        #     pressureValue -= self.pas
+        #     if pressureValue < 0:
+        #         pressureValue = 0
+
+        # self.pressure.value = [pressureValue]
+        # print('Pression cavité ', pressureValue)
+
+############################################################################################################
+# from stlib3.physics.mixedmaterial import rigidification
+# Copied here to change template
+
+
+def getBarycenter(selectedPoints):
+    poscenter = [0., 0., 0.]
+    if len(selectedPoints) != 0:
+            poscenter = sdiv(sum(selectedPoints), float(len(selectedPoints)))
+    return poscenter
+
+
+
+def Rigidify(targetObject, sourceObject, groupIndices, frames=None, name=None):
+        """ Transform a deformable object into a mixed one containing both rigid and deformable parts.
+
+            :param targetObject: parent node where to attach the final object.
+            :param sourceObject: node containing the deformable object. The object should be following
+                                 the ElasticMaterialObject template.
+            :param list groupIndices: array of array indices to rigidify. The length of the array should be equal to the number
+                                      of rigid component.
+            :param list frames: array of frames. The length of the array should be equal to the number
+                                of rigid component. The orientation are given in eulerAngles (in degree) by passing
+                                three values or using a quaternion by passing four values.
+                                [[rx,ry,rz], [qx,qy,qz,w]]
+                                User can also specify the position of the frame by passing six values (position and orientation in degree)
+                                or seven values (position and quaternion).
+                                [[x,y,z,rx,ry,rz], [x,y,z,qx,qy,qz,w]]
+                                If the position is not specified, the position of the rigids will be the barycenter of the region to rigidify.
+            :param str name: specify the name of the Rigidified object, is none provided use the name of the SOurceObject.
+        """
+        if frames is None:
+            frames = [[0., 0., 0.]]*len(groupIndices)
+
+        assert len(groupIndices) == len(frames), "size mismatch."
+
+        if name is None:
+            name = sourceObject.name
+
+        # sourceObject.reinit()
+        ero = targetObject.addChild(name)
+
+        allPositions = sourceObject.dofs.position.value
+        allIndices =list(range(len(allPositions)))
+
+        rigids = []
+        indicesMap = []
+
+        def mfilter(si, ai, pts):
+                tmp = []
+                for i in ai:
+                        if i in si:
+                                tmp.append(pts[i])
+                return tmp
+
+        # get all the points from the source.
+        selectedIndices = []
+        for i in range(len(groupIndices)):
+                selectedPoints = mfilter(groupIndices[i], allIndices, allPositions)
+                if len(frames[i]) == 3:
+                        orientation = Quat.createFromEuler(frames[i], inDegree=True)
+                        poscenter = getBarycenter(selectedPoints)
+                elif len(frames[i]) == 4:
+                        orientation = frames[i]
+                        poscenter = getBarycenter(selectedPoints)
+                elif len(frames[i]) == 6:
+                        orientation = Quat.createFromEuler([frames[i][3], frames[i][4], frames[i][5]], inDegree=True)
+                        poscenter = [frames[i][0], frames[i][1], frames[i][2]]
+                elif len(frames[i]) == 7:
+                        orientation = [frames[i][3], frames[i][4], frames[i][5], frames[i][6]]
+                        poscenter = [frames[i][0], frames[i][1], frames[i][2]]
+                else:
+                        Sofa.msg_error("Do not understand the size of a frame.")
+
+                rigids.append(poscenter + list(orientation))
+
+                selectedIndices += map(lambda x: x, groupIndices[i])
+                indicesMap += [i] * len(groupIndices[i])
+
+        otherIndices = list(filter(lambda x: x not in selectedIndices, allIndices))
+        Kd = {v: None for k, v in enumerate(allIndices)}
+        Kd.update({v: [0, k] for k, v in enumerate(otherIndices)})
+        Kd.update({v: [1, k] for k, v in enumerate(selectedIndices)})
+        indexPairs = [v for kv in Kd.values() for v in kv]
+
+        freeParticules = ero.addChild("DeformableParts")
+        freeParticules.addObject("MechanicalObject", template="Rigid3", name="dofs",
+                                    position=[allPositions[i] for i in otherIndices])
+
+        rigidParts = ero.addChild("RigidParts")
+        rigidParts.addObject("MechanicalObject", template="Rigid3", name="dofs", reserve=len(rigids), position=rigids)
+
+        rigidifiedParticules = rigidParts.addChild("RigidifiedParticules")
+        rigidifiedParticules.addObject("MechanicalObject", template="Rigid3", name="dofs",
+                                          position=[allPositions[i] for i in selectedIndices])
+        rigidifiedParticules.addObject("RigidMapping", name="mapping", globalToLocalCoords=True, rigidIndexPerPoint=indicesMap)
+
+        if "solver" in sourceObject.objects:
+            sourceObject.removeObject(sourceObject.solver)
+        if "integration" in sourceObject.objects:
+            sourceObject.removeObject(sourceObject.integration)
+        if "correction" in sourceObject.objects:
+            sourceObject.removeObject(sourceObject.correction)
+
+        sourceObject.addObject("SubsetMultiMapping", name="mapping", template="Rigid3,Rigid3",
+                              input=[freeParticules.dofs.getLinkPath(),rigidifiedParticules.dofs.getLinkPath()],
+                              output=sourceObject.dofs.getLinkPath(),
+                              indexPairs=indexPairs)
+
+        rigidifiedParticules.addChild(sourceObject)
+        freeParticules.addChild(sourceObject)
+        return ero
+
 
 
 def FixBasePosition(node):
@@ -160,14 +274,56 @@ def FixBasePosition(node):
         drawTetrahedra=False,
     )  # si autom complète, mettre 8 dépendant des dimensions du robot
     BaseBox.init()
-    print('selected : ')
-    print(BaseBox.indices.value)
+    # print('selected : ')
+    # print(BaseBox.indices.value)
     node.addObject(
         'RestShapeSpringsForceField',
         points=BaseBox.indices.value,
         angularStiffness=1e5,
         stiffness=1e5,
     )  # pour accrocher la base du robot dans l'espace
+
+
+def RigidifyTopAndBase(parent_node, node):
+    node.init()
+    rigidPart = node.addChild('rigidPart')
+    BaseBox = rigidPart.addObject(
+        'BoxROI',
+        name='boxROI_base',
+        box=[-8, -8, -1, 8, 8, 1],
+        drawBoxes=True,
+        strict=False,
+    )
+
+    BaseTop = rigidPart.addObject(
+        'BoxROI',
+        name='boxROI_top',
+        box=[-8, -8, 41, 8, 8, 43],
+        drawBoxes=True,
+        strict=False,
+    )
+    BaseBox.init()
+    BaseTop.init()
+    # points_to_rigidify = BaseBox.indices.value + BaseTop.indices.value
+    points_to_rigidify = np.concatenate(
+        (BaseBox.indices.value, BaseTop.indices.value)
+    )
+    # points_to_rigidify = np.concatenate(
+    #     (BaseBox.pointsInROI.value, BaseTop.pointsInROI.value), axis=0
+    # )
+    # rigidPart.addObject(
+    #     'MechanicalObject',
+    #     name='ridigObject',
+    #     position=points_to_rigidify,
+    # )
+    # rigidPart.addObject('RigidMapping')
+
+    Rigidify(
+        targetObject=parent_node,
+        sourceObject=node,
+        groupIndices=[points_to_rigidify],
+        name='cap',
+    )
 
 
 def createCavity(
@@ -188,90 +344,92 @@ def createCavity(
         name='MeshLoader',
         filename=cavity_model,
     )
-    # bellowNode.addObject('MeshTopology', name='topology', src='@MeshLoader')
-    # bellowNode.addObject(
-    #     'Vertex2Frame',
-    #     position='@MeshLoader.position',
-    #     normals='@MeshLoader.normals',
-    #     name='engine_1',
-    #     invertNormals='1',
-    #     template='Rigid3d',
-    # )
-    # bellowNode.addObject(
-    #     'MechanicalObject',
-    #     name='chambreA' + str(i + 1),
-    #     position='@engine_1.frames',
-    #     template='Rigid3',
-    # )
+    bellowNode.addObject('MeshTopology', name='container', src='@MeshLoader')
+    bellowNode.addObject(
+        'Vertex2Frame',
+        position='@MeshLoader.position',
+        normals='@MeshLoader.normals',
+        name='engine_1',
+        invertNormals='1',
+        template='Rigid3d',
+    )
+    bellowNode.addObject(
+        'MechanicalObject',
+        name='dofs',
+        position='@engine_1.frames',
+        template='Rigid3',
+    )
 
-    # bellowNode.addObject('UniformMass', totalMass=1000, rayleighMass=0)
-
-    # # bellowNode.addObject(
-    # #     'TriangularBendingFEMForceField',
-    # #     thickness=1,  # 'm'
-    # #     youngModulus=1000,  # 'Pa'
-    # #     poissonRatio=0.49,
-    # # )
+    bellowNode.addObject('UniformMass', totalMass=1000, rayleighMass=0)
 
     # bellowNode.addObject(
-    #     'TriangularShellForceField',
-    #     measure='Von Mises stress',
-    #     showTriangle=True,
+    #     'TriangularBendingFEMForceField',
     #     thickness=1,  # 'm'
-    #     showMeasuredValue=True,
-    #     youngModulus=100,  # 'Pa'
+    #     youngModulus=1000,  # 'Pa'
     #     poissonRatio=0.49,
     # )
 
-    # triangleIndices = list(range(len(bellowNode.MeshLoader.triangles)))
-    # bellowNode.addObject(
-    #     'SurfacePressureForceField',
-    #     name='SPC',
-    #     triangleIndices=triangleIndices,
-    #     pressure=0,
-    # )
-
-    bellowNode.addObject('MeshTopology', src='@MeshLoader', name='Cavity')
     bellowNode.addObject(
-        'MechanicalObject', name='chambreA' + str(i + 1), rotation=[0, 0, 0]
-    )  # ,translation = [0,0,h_module*i]) # 90 on y
-    bellowNode.addObject('TriangleCollisionModel', moving='0', simulated='1')
-    bellowNode.addObject(
-        'TriangleFEMForceField',
-        template='Vec3',
-        name='FEM',
-        method='large',
+        'TriangularShellForceField',
+        measure='Von Mises stress',
+        showTriangle=True,
+        thickness=1,  # 'm'
+        showMeasuredValue=True,
+        youngModulus=100,  # 'Pa'
         poissonRatio=0.49,
-        youngModulus=100,
-        thickness=5,
-    )  # stable youngModulus = 500 / réel ? = 103
-    bellowNode.addObject('UniformMass', totalMass=1000, rayleighMass=0)
+    )
 
-    if inverse_flag == True:
-        bellowNode.addObject(
-            'SurfacePressureActuator',
-            name='SPC',
-            template='Vec3d',
-            triangles='@chambreAMesh' + str(i + 1) + '.triangles',
-            minPressure=0,
-            maxPressure=300,
-        )  # ,maxPressureVariation = 20)#,valueType=self.value_type)
-    elif inverse_flag == False:
-        bellowNode.addObject(
-            'SurfacePressureConstraint',
-            name='SPC',
-            triangles='@chambreAMesh' + str(i + 1) + '.triangles',
-            value=0,
-            minPressure=0,
-            maxPressure=300,
-            valueType="pressure",
-        )  # ,maxPressureVariation = 20)#,
+    triangleIndices = list(range(len(bellowNode.MeshLoader.triangles)))
+    bellowNode.addObject(
+        'SurfacePressureForceField',
+        name='SPC',
+        triangleIndices=triangleIndices,
+        pressure=0,
+    )
+
+    # bellowNode.addObject('Meshcontainer', src='@MeshLoader', name='Cavity')
+    # bellowNode.addObject(
+    #     'MechanicalObject', name='chambreA' + str(i + 1), rotation=[0, 0, 0]
+    # )  # ,translation = [0,0,h_module*i]) # 90 on y
+    # bellowNode.addObject('TriangleCollisionModel', moving='0', simulated='1')
+    # bellowNode.addObject(
+    #     'TriangleFEMForceField',
+    #     template='Vec3',
+    #     name='FEM',
+    #     method='large',
+    #     poissonRatio=0.49,
+    #     youngModulus=100,
+    #     thickness=5,
+    # )  # stable youngModulus = 500 / réel ? = 103
+    # bellowNode.addObject('UniformMass', totalMass=1000, rayleighMass=0)
+
+    # if inverse_flag == True:
+    #     bellowNode.addObject(
+    #         'SurfacePressureActuator',
+    #         name='SPC',
+    #         template='Vec3d',
+    #         triangles='@chambreAMesh' + str(i + 1) + '.triangles',
+    #         minPressure=0,
+    #         maxPressure=300,
+    #     )  # ,maxPressureVariation = 20)#,valueType=self.value_type)
+    # elif inverse_flag == False:
+    #     bellowNode.addObject(
+    #         'SurfacePressureConstraint',
+    #         name='SPC',
+    #         triangles='@chambreAMesh' + str(i + 1) + '.triangles',
+    #         value=0,
+    #         minPressure=0,
+    #         maxPressure=300,
+    #         valueType="pressure",
+    #     )  # ,maxPressureVariation = 20)#,
 
     # visu = bellowNode.addChild('Visu')
     # visu.addObject('OglModel', src=bellowNode.topology.getLinkPath())
     # visu.addObject('IdentityMapping')
 
     FixBasePosition(node=bellowNode)
+
+    # RigidifyTopAndBase(parent_node=parent, node=bellowNode)
 
     return bellowNode
 
@@ -400,12 +558,13 @@ def createScene(rootNode):
                 if abs(p[2] - min_z) <= tolerance
             ]
             helix_points = []
-            num_turns = 10
+            num_turns = 4
             height = max(points, key=lambda p: p[2])[2] - min_z
-            num_points = len(bottom_points)
+            # num_points = len(bottom_points)
+            num_points = 50
             angle_step = 2 * math.pi / num_points
-            helix_radius = 3.4
-            num_thread = 5
+            helix_radius = 3.2
+            num_thread = 4
             phase_step = 2 * np.pi / num_thread
 
             for n in range(num_thread):
@@ -442,7 +601,7 @@ def createScene(rootNode):
                     stiffness=10000,
                     damping=0.1,
                 )
-                helix_node.addObject('BarycentricMapping')
+                helix_node.addObject('SkinningMapping')
 
             for n in range(num_thread):
                 helix_points = []
@@ -478,10 +637,81 @@ def createScene(rootNode):
                     stiffness=10000,
                     damping=0.1,
                 )
-                helix_node.addObject('BarycentricMapping')
+                helix_node.addObject('SkinningMapping')
 
+                # Create circular mesh on the top and bottom of the cylinder
+                def create_circular_mesh(radius, num_segments, z):
+                    angle_step = 2 * np.pi / num_segments
+                    points = [
+                        [
+                            radius * np.cos(i * angle_step),
+                            radius * np.sin(i * angle_step),
+                            z,
+                        ]
+                        for i in range(num_segments)
+                    ]
+                    points.append([0, 0, z])  # center point
+                    triangles = [
+                        [i, (i + 1) % num_segments, num_segments]
+                        for i in range(num_segments)
+                    ]
+                    return points, triangles
 
+                for radius in [1.6, 3.2]:
+                    # radius = 3.4  # Adjust as needed
+                    num_segments = 16  # Adjust as needed
 
+                    # Top circular mesh
+                    top_points, top_triangles = create_circular_mesh(
+                        radius, num_segments, height + min_z
+                    )
+                    top_node = pneumatic.addChild('topCircularMesh')
+                    top_node.addObject(
+                        'MeshTopology',
+                        name='topTopology',
+                        position=top_points,
+                        triangles=top_triangles,
+                    )
+                    top_node.addObject(
+                        'MechanicalObject',
+                        name='topPoints',
+                        position=top_points,
+                        showObject=True,
+                        showObjectScale=2,
+                    )
+                    top_node.addObject(
+                        'MeshSpringForceField',
+                        name='topSprings',
+                        stiffness=1000000,
+                        damping=0.1,
+                    )
+                    top_node.addObject('SkinningMapping')
+
+                    # Bottom circular mesh
+                    bottom_points, bottom_triangles = create_circular_mesh(
+                        radius, num_segments, min_z
+                    )
+                    bottom_node = pneumatic.addChild('bottomCircularMesh')
+                    bottom_node.addObject(
+                        'MeshTopology',
+                        name='bottomTopology',
+                        position=bottom_points,
+                        triangles=bottom_triangles,
+                    )
+                    bottom_node.addObject(
+                        'MechanicalObject',
+                        name='bottomPoints',
+                        position=bottom_points,
+                        showObject=True,
+                        showObjectScale=2,
+                    )
+                    bottom_node.addObject(
+                        'MeshSpringForceField',
+                        name='bottomSprings',
+                        stiffness=1000000,
+                        damping=0.1,
+                    )
+                    bottom_node.addObject('SkinningMapping')
 
         else:
             if ELONGATION == False:
