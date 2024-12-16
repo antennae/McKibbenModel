@@ -22,6 +22,13 @@ INVERSE = False
 
 HELIX = True
 
+CONSTRAIN_BY_CABLE=True
+
+if CONSTRAIN_BY_CABLE:
+    CONSTRAIN_BY_SPRING=False
+else:
+    CONSTRAIN_BY_SPRING=True
+
 
 def EffectorGoal(
     node, position, name, taille, solver=True
@@ -633,12 +640,23 @@ def createScene(rootNode):
                     showObjectScale=2,
                 )
 
-                helix_node.addObject(
-                    'MeshSpringForceField',
-                    name=f'helixA_spring_{n}',
-                    stiffness=100000,
-                    # damping=0.1,
-                )
+                if CONSTRAIN_BY_SPRING:
+                    helix_node.addObject(
+                        'MeshSpringForceField',
+                        name=f'helixA_spring_{n}',
+                        stiffness=100000,
+                        # damping=0.1,
+                    )
+                if CONSTRAIN_BY_CABLE:
+                    helix_node.addObject(
+                        'CableConstraint',
+                        indices=list(range(len(helix_points))),
+                        valueType='displacement',
+                        value=0,
+                        hasPullPoint=False,
+                        drawPoints=False,
+                        drawPullPoint=False,
+                    )
                 helix_node.addObject('SkinningMapping')
 
             for n in range(num_thread):
@@ -668,13 +686,23 @@ def createScene(rootNode):
                     showObject=True,
                     showObjectScale=2,
                 )
-
-                helix_node.addObject(
-                    'MeshSpringForceField',
-                    name=f'helixB_spring_{n}',
-                    stiffness=100000,
-                    # damping=0.1,
-                )
+                if CONSTRAIN_BY_SPRING:
+                    helix_node.addObject(
+                        'MeshSpringForceField',
+                        name=f'helixB_spring_{n}',
+                        stiffness=100000,
+                        # damping=0.1,
+                    )
+                if CONSTRAIN_BY_CABLE:
+                    helix_node.addObject(
+                        'CableConstraint',
+                        indices=list(range(len(helix_points))),
+                        valueType='displacement',
+                        value=0,
+                        hasPullPoint=False,
+                        drawPoints=False,
+                        drawPullPoint=False,
+                    )
                 helix_node.addObject('SkinningMapping')
 
                 # Create circular mesh on the top and bottom of the cylinder
