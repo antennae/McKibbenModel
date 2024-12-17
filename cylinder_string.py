@@ -53,34 +53,34 @@ class PressureController(
     def onKeypressedEvent(self, e):
 
         # SurfacePressureForceField
-        pressureValue = self.pressure.pressure.value
-        if e['key'] == Key.A:
-            pressureValue += self.pas
-            # print('===========D')
-            if pressureValue > self.max_pression:
-                pressureValue = self.max_pression
-        if e['key'] == Key.Q:
-            pressureValue -= self.pas
-            if pressureValue < 0:
-                pressureValue = 0
-
-        self.pressure.pressure.value = pressureValue
-        print('Pression cavité ', pressureValue)
-
-        # pressureValue = self.pressure.value.value[0]
-
-        # if e["key"] == Key.A:
+        # pressureValue = self.pressure.pressure.value
+        # if e['key'] == Key.A:
         #     pressureValue += self.pas
         #     # print('===========D')
         #     if pressureValue > self.max_pression:
         #         pressureValue = self.max_pression
-        # if e["key"] == Key.Q:
+        # if e['key'] == Key.Q:
         #     pressureValue -= self.pas
         #     if pressureValue < 0:
         #         pressureValue = 0
 
-        # self.pressure.value = [pressureValue]
+        # self.pressure.pressure.value = pressureValue
         # print('Pression cavité ', pressureValue)
+
+        pressureValue = self.pressure.value.value[0]
+
+        if e["key"] == Key.A:
+            pressureValue += self.pas
+            # print('===========D')
+            if pressureValue > self.max_pression:
+                pressureValue = self.max_pression
+        if e["key"] == Key.Q:
+            pressureValue -= self.pas
+            if pressureValue < 0:
+                pressureValue = 0
+
+        self.pressure.value = [pressureValue]
+        print('Pression cavité ', pressureValue)
 
 
 def FixBasePosition(node):
@@ -153,17 +153,17 @@ def createCavity(
         showTriangle=True,
         thickness=1,  # 'm'
         showMeasuredValue=True,
-        youngModulus=100,  # 'Pa'
+        youngModulus=10000,  # 'Pa'
         poissonRatio=0.49,
     )
 
-    triangleIndices = list(range(len(bellowNode.MeshLoader.triangles)))
-    bellowNode.addObject(
-        'SurfacePressureForceField',
-        name='SPC',
-        triangleIndices=triangleIndices,
-        pressure=0,
-    )
+    # triangleIndices = list(range(len(bellowNode.MeshLoader.triangles)))
+    # bellowNode.addObject(
+    #     'SurfacePressureForceField',
+    #     name='SPC',
+    #     triangleIndices=triangleIndices,
+    #     pressure=0,
+    # )
 
     # bellowNode.addObject('Meshcontainer', src='@MeshLoader', name='Cavity')
     # bellowNode.addObject(
@@ -181,52 +181,30 @@ def createCavity(
     # )  # stable youngModulus = 500 / réel ? = 103
     # bellowNode.addObject('UniformMass', totalMass=1000, rayleighMass=0)
 
-    # if inverse_flag == True:
-    #     bellowNode.addObject(
-    #         'SurfacePressureActuator',
-    #         name='SPC',
-    #         template='Vec3d',
-    #         triangles='@chambreAMesh' + str(i + 1) + '.triangles',
-    #         minPressure=0,
-    #         maxPressure=300,
-    #     )  # ,maxPressureVariation = 20)#,valueType=self.value_type)
-    # elif inverse_flag == False:
-    #     bellowNode.addObject(
-    #         'SurfacePressureConstraint',
-    #         name='SPC',
-    #         triangles='@chambreAMesh' + str(i + 1) + '.triangles',
-    #         value=0,
-    #         minPressure=0,
-    #         maxPressure=300,
-    #         valueType="pressure",
-    #     )  # ,maxPressureVariation = 20)#,
-
+    chamber_node = bellowNode.addChild('Chamber')
+    chamber_node.addObject(
+        'MechanicalObject',
+        name='chamber',
+        position='@../dofs.position',
+        template='Vec3',
+    )
+    chamber_node.addObject(
+        'SurfacePressureConstraint',
+        name='SPC',
+        triangles='@chambreAMesh' + str(i + 1) + '.triangles',
+        value=0,
+        minPressure=0,
+        maxPressure=300,
+        valueType='pressure',
+    )  # ,maxPressureVariation = 20)#,
+    chamber_node.addObject('SkinningMapping')
     # visu = bellowNode.addChild('Visu')
     # visu.addObject('OglModel', src=bellowNode.topology.getLinkPath())
     # visu.addObject('IdentityMapping')
 
     FixBasePosition(node=bellowNode)
 
-    return bellowNode
-
-
-# Create circular mesh on the top and bottom of the cylinder
-def create_circular_mesh(radius, num_segments, z):
-    angle_step = 2 * np.pi / num_segments
-    points = [
-        [
-            radius * np.cos(i * angle_step),
-            radius * np.sin(i * angle_step),
-            z,
-        ]
-        for i in range(num_segments)
-    ]
-    points.append([0, 0, z])  # center point
-    triangles = [
-        [i, (i + 1) % num_segments, num_segments] for i in range(num_segments)
-    ]
-    return points, triangles
-
+    return bellowNode, chamber_node
 
 def create_helix_mesh(
     radius,
@@ -252,6 +230,22 @@ def create_helix_mesh(
         helix_points.append([x, y, z])
     return helix_points
 
+# Create circular mesh on the top and bottom of the cylinder
+def create_circular_mesh(radius, num_segments, z):
+    angle_step = 2 * np.pi / num_segments
+    points = [
+        [
+            radius * np.cos(i * angle_step),
+            radius * np.sin(i * angle_step),
+            z,
+        ]
+        for i in range(num_segments)
+    ]
+    points.append([0, 0, z])  # center point
+    triangles = [
+        [i, (i + 1) % num_segments, num_segments] for i in range(num_segments)
+    ]
+    return points, triangles
 
 def createScene(rootNode):
     # required plugins:
@@ -312,7 +306,7 @@ def createScene(rootNode):
     # fichier =  'parametric_cavity_sliced2.stl'
     fichier = 'cylinder.stl'
 
-    pneumatic = createCavity(
+    pneumatic, chamber_node = createCavity(
         parent=rootNode,
         name_c='cavity',
         i=1,
@@ -325,7 +319,7 @@ def createScene(rootNode):
         maxIterations='100',
         tolerance='0.0000001',
     )
-    rootNode.addObject(PressureController(pas=1, parent=pneumatic))
+    rootNode.addObject(PressureController(pas=1, parent=chamber_node))
 
     points_node = pneumatic.getObject('MeshLoader')
     points = points_node.position.value
@@ -445,8 +439,8 @@ def createScene(rootNode):
     pneumatic.addObject(
         'EulerImplicitSolver',
         firstOrder=False,
-        rayleighStiffness=0.1,
-        rayleighMass=0.1,
+        rayleighStiffness=0.2,
+        rayleighMass=0.2,
         vdamping=0,
     )
     pneumatic.addObject('GenericConstraintCorrection')
