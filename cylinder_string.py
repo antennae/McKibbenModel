@@ -22,6 +22,13 @@ INVERSE = False
 
 HELIX = True
 
+CONSTRAIN_BY_CABLE=True
+
+if CONSTRAIN_BY_CABLE:
+    CONSTRAIN_BY_SPRING=False
+else:
+    CONSTRAIN_BY_SPRING=True
+
 
 def EffectorGoal(
     node, position, name, taille, solver=True
@@ -154,145 +161,145 @@ class PressureController(
 # Copied here to change template
 
 
-def getBarycenter(selectedPoints):
-    poscenter = [0.0, 0.0, 0.0]
-    if len(selectedPoints) != 0:
-        poscenter = sdiv(sum(selectedPoints), float(len(selectedPoints)))
-    return poscenter
+# def getBarycenter(selectedPoints):
+#     poscenter = [0.0, 0.0, 0.0]
+#     if len(selectedPoints) != 0:
+#         poscenter = sdiv(sum(selectedPoints), float(len(selectedPoints)))
+#     return poscenter
 
 
-def Rigidify(targetObject, sourceObject, groupIndices, frames=None, name=None):
-    """Transform a deformable object into a mixed one containing both rigid and deformable parts.
+# def Rigidify(targetObject, sourceObject, groupIndices, frames=None, name=None):
+#     """Transform a deformable object into a mixed one containing both rigid and deformable parts.
 
-    :param targetObject: parent node where to attach the final object.
-    :param sourceObject: node containing the deformable object. The object should be following
-                         the ElasticMaterialObject template.
-    :param list groupIndices: array of array indices to rigidify. The length of the array should be equal to the number
-                              of rigid component.
-    :param list frames: array of frames. The length of the array should be equal to the number
-                        of rigid component. The orientation are given in eulerAngles (in degree) by passing
-                        three values or using a quaternion by passing four values.
-                        [[rx,ry,rz], [qx,qy,qz,w]]
-                        User can also specify the position of the frame by passing six values (position and orientation in degree)
-                        or seven values (position and quaternion).
-                        [[x,y,z,rx,ry,rz], [x,y,z,qx,qy,qz,w]]
-                        If the position is not specified, the position of the rigids will be the barycenter of the region to rigidify.
-    :param str name: specify the name of the Rigidified object, is none provided use the name of the SOurceObject.
-    """
-    if frames is None:
-        frames = [[0.0, 0.0, 0.0]] * len(groupIndices)
+#     :param targetObject: parent node where to attach the final object.
+#     :param sourceObject: node containing the deformable object. The object should be following
+#                          the ElasticMaterialObject template.
+#     :param list groupIndices: array of array indices to rigidify. The length of the array should be equal to the number
+#                               of rigid component.
+#     :param list frames: array of frames. The length of the array should be equal to the number
+#                         of rigid component. The orientation are given in eulerAngles (in degree) by passing
+#                         three values or using a quaternion by passing four values.
+#                         [[rx,ry,rz], [qx,qy,qz,w]]
+#                         User can also specify the position of the frame by passing six values (position and orientation in degree)
+#                         or seven values (position and quaternion).
+#                         [[x,y,z,rx,ry,rz], [x,y,z,qx,qy,qz,w]]
+#                         If the position is not specified, the position of the rigids will be the barycenter of the region to rigidify.
+#     :param str name: specify the name of the Rigidified object, is none provided use the name of the SOurceObject.
+#     """
+#     if frames is None:
+#         frames = [[0.0, 0.0, 0.0]] * len(groupIndices)
 
-    assert len(groupIndices) == len(frames), "size mismatch."
+#     assert len(groupIndices) == len(frames), "size mismatch."
 
-    if name is None:
-        name = sourceObject.name
+#     if name is None:
+#         name = sourceObject.name
 
-    # sourceObject.reinit()
-    ero = targetObject.addChild(name)
+#     # sourceObject.reinit()
+#     ero = targetObject.addChild(name)
 
-    allPositions = sourceObject.dofs.position.value
-    allIndices = list(range(len(allPositions)))
+#     allPositions = sourceObject.dofs.position.value
+#     allIndices = list(range(len(allPositions)))
 
-    rigids = []
-    indicesMap = []
+#     rigids = []
+#     indicesMap = []
 
-    def mfilter(si, ai, pts):
-        tmp = []
-        for i in ai:
-            if i in si:
-                tmp.append(pts[i])
-        return tmp
+#     def mfilter(si, ai, pts):
+#         tmp = []
+#         for i in ai:
+#             if i in si:
+#                 tmp.append(pts[i])
+#         return tmp
 
-    # get all the points from the source.
-    selectedIndices = []
-    for i in range(len(groupIndices)):
-        selectedPoints = mfilter(groupIndices[i], allIndices, allPositions)
-        if len(frames[i]) == 3:
-            orientation = Quat.createFromEuler(frames[i], inDegree=True)
-            poscenter = getBarycenter(selectedPoints)
-        elif len(frames[i]) == 4:
-            orientation = frames[i]
-            poscenter = getBarycenter(selectedPoints)
-        elif len(frames[i]) == 6:
-            orientation = Quat.createFromEuler(
-                [frames[i][3], frames[i][4], frames[i][5]], inDegree=True
-            )
-            poscenter = [frames[i][0], frames[i][1], frames[i][2]]
-        elif len(frames[i]) == 7:
-            orientation = [
-                frames[i][3],
-                frames[i][4],
-                frames[i][5],
-                frames[i][6],
-            ]
-            poscenter = [frames[i][0], frames[i][1], frames[i][2]]
-        else:
-            Sofa.msg_error("Do not understand the size of a frame.")
+#     # get all the points from the source.
+#     selectedIndices = []
+#     for i in range(len(groupIndices)):
+#         selectedPoints = mfilter(groupIndices[i], allIndices, allPositions)
+#         if len(frames[i]) == 3:
+#             orientation = Quat.createFromEuler(frames[i], inDegree=True)
+#             poscenter = getBarycenter(selectedPoints)
+#         elif len(frames[i]) == 4:
+#             orientation = frames[i]
+#             poscenter = getBarycenter(selectedPoints)
+#         elif len(frames[i]) == 6:
+#             orientation = Quat.createFromEuler(
+#                 [frames[i][3], frames[i][4], frames[i][5]], inDegree=True
+#             )
+#             poscenter = [frames[i][0], frames[i][1], frames[i][2]]
+#         elif len(frames[i]) == 7:
+#             orientation = [
+#                 frames[i][3],
+#                 frames[i][4],
+#                 frames[i][5],
+#                 frames[i][6],
+#             ]
+#             poscenter = [frames[i][0], frames[i][1], frames[i][2]]
+#         else:
+#             Sofa.msg_error("Do not understand the size of a frame.")
 
-        rigids.append(poscenter + list(orientation))
+#         rigids.append(poscenter + list(orientation))
 
-        selectedIndices += map(lambda x: x, groupIndices[i])
-        indicesMap += [i] * len(groupIndices[i])
+#         selectedIndices += map(lambda x: x, groupIndices[i])
+#         indicesMap += [i] * len(groupIndices[i])
 
-    otherIndices = list(filter(lambda x: x not in selectedIndices, allIndices))
-    Kd = {v: None for k, v in enumerate(allIndices)}
-    Kd.update({v: [0, k] for k, v in enumerate(otherIndices)})
-    Kd.update({v: [1, k] for k, v in enumerate(selectedIndices)})
-    indexPairs = [v for kv in Kd.values() for v in kv]
+#     otherIndices = list(filter(lambda x: x not in selectedIndices, allIndices))
+#     Kd = {v: None for k, v in enumerate(allIndices)}
+#     Kd.update({v: [0, k] for k, v in enumerate(otherIndices)})
+#     Kd.update({v: [1, k] for k, v in enumerate(selectedIndices)})
+#     indexPairs = [v for kv in Kd.values() for v in kv]
 
-    freeParticules = ero.addChild("DeformableParts")
-    freeParticules.addObject(
-        "MechanicalObject",
-        template="Rigid3",
-        name="dofs",
-        position=[allPositions[i] for i in otherIndices],
-    )
+#     freeParticules = ero.addChild("DeformableParts")
+#     freeParticules.addObject(
+#         "MechanicalObject",
+#         template="Rigid3",
+#         name="dofs",
+#         position=[allPositions[i] for i in otherIndices],
+#     )
 
-    rigidParts = ero.addChild("RigidParts")
-    rigidParts.addObject(
-        "MechanicalObject",
-        template="Rigid3",
-        name="dofs",
-        reserve=len(rigids),
-        position=rigids,
-    )
+#     rigidParts = ero.addChild("RigidParts")
+#     rigidParts.addObject(
+#         "MechanicalObject",
+#         template="Rigid3",
+#         name="dofs",
+#         reserve=len(rigids),
+#         position=rigids,
+#     )
 
-    rigidifiedParticules = rigidParts.addChild("RigidifiedParticules")
-    rigidifiedParticules.addObject(
-        "MechanicalObject",
-        template="Rigid3",
-        name="dofs",
-        position=[allPositions[i] for i in selectedIndices],
-    )
-    rigidifiedParticules.addObject(
-        "RigidMapping",
-        name="mapping",
-        globalToLocalCoords=True,
-        rigidIndexPerPoint=indicesMap,
-    )
+#     rigidifiedParticules = rigidParts.addChild("RigidifiedParticules")
+#     rigidifiedParticules.addObject(
+#         "MechanicalObject",
+#         template="Rigid3",
+#         name="dofs",
+#         position=[allPositions[i] for i in selectedIndices],
+#     )
+#     rigidifiedParticules.addObject(
+#         "RigidMapping",
+#         name="mapping",
+#         globalToLocalCoords=True,
+#         rigidIndexPerPoint=indicesMap,
+#     )
 
-    if "solver" in sourceObject.objects:
-        sourceObject.removeObject(sourceObject.solver)
-    if "integration" in sourceObject.objects:
-        sourceObject.removeObject(sourceObject.integration)
-    if "correction" in sourceObject.objects:
-        sourceObject.removeObject(sourceObject.correction)
+#     if "solver" in sourceObject.objects:
+#         sourceObject.removeObject(sourceObject.solver)
+#     if "integration" in sourceObject.objects:
+#         sourceObject.removeObject(sourceObject.integration)
+#     if "correction" in sourceObject.objects:
+#         sourceObject.removeObject(sourceObject.correction)
 
-    sourceObject.addObject(
-        "SubsetMultiMapping",
-        name="mapping",
-        template="Rigid3,Rigid3",
-        input=[
-            freeParticules.dofs.getLinkPath(),
-            rigidifiedParticules.dofs.getLinkPath(),
-        ],
-        output=sourceObject.dofs.getLinkPath(),
-        indexPairs=indexPairs,
-    )
+#     sourceObject.addObject(
+#         "SubsetMultiMapping",
+#         name="mapping",
+#         template="Rigid3,Rigid3",
+#         input=[
+#             freeParticules.dofs.getLinkPath(),
+#             rigidifiedParticules.dofs.getLinkPath(),
+#         ],
+#         output=sourceObject.dofs.getLinkPath(),
+#         indexPairs=indexPairs,
+#     )
 
-    rigidifiedParticules.addChild(sourceObject)
-    freeParticules.addChild(sourceObject)
-    return ero
+#     rigidifiedParticules.addChild(sourceObject)
+#     freeParticules.addChild(sourceObject)
+#     return ero
 
 
 def FixBasePosition(node):
@@ -520,6 +527,7 @@ def createScene(rootNode):
 
     fichier = 'cylinder_16_parts.stl'
     # fichier =  'parametric_cavity_sliced2.stl'
+    fichier = 'cylinder.stl'
 
     pneumatic = createCavity(
         parent=rootNode,
@@ -529,48 +537,53 @@ def createScene(rootNode):
         inverse_flag=INVERSE,
     )
 
-    if INVERSE:
-        goal = EffectorGoal(
-            node=rootNode,
-            position=[0, 0, 42],
-            name='goal',
-            taille=2,
-            solver=True,
-        )
-        controlledPoints = pneumatic.addChild('controlledPoints')
-        controlledPoints.addObject(
-            'MechanicalObject',
-            name='actuatedPoints',
-            template='Vec3',
-            position=[0, 0, 42],
-        )  # ,rotation=[0, 90 ,0]) # classic
-        # controlledPoints.addObject('MechanicalObject', name='actuatedPoints', template='Rigid3',position=[0, 0, h_effector,0., 0., 0., 1.])#,rotation=[0, 90 ,0]) # rigid pour l'orientation
-        controlledPoints.addObject(
-            'PositionEffector',
-            template='Vec3d',
-            indices='0',
-            effectorGoal='@../../goal/goalM0.position',
-        )  # classic
-        controlledPoints.addObject(
-            'BarycentricMapping', mapForces=False, mapMasses=False
-        )
-        rootNode.addObject(
-            'QPInverseProblemSolver',
-            name='QP',
-            printLog='0',
-            saveMatrices=True,
-            epsilon=0.01,
-        )  # initialement epsilon = 0.001
-        rootNode.addObject(
-            GoalKeyboardController(goal_pas=1, node=goal, name='goalM0')
-        )
-    else:
-        rootNode.addObject(
-            'GenericConstraintSolver',
-            maxIterations='100',
-            tolerance='0.0000001',
-        )
-        rootNode.addObject(PressureController(pas=1, parent=pneumatic))
+    # if INVERSE:
+    #     goal = EffectorGoal(
+    #         node=rootNode,
+    #         position=[0, 0, 42],
+    #         name='goal',
+    #         taille=2,
+    #         solver=True,
+    #     )
+    #     controlledPoints = pneumatic.addChild('controlledPoints')
+    #     controlledPoints.addObject(
+    #         'MechanicalObject',
+    #         name='actuatedPoints',
+    #         template='Vec3',
+    #         position=[0, 0, 42],
+    #     )  # ,rotation=[0, 90 ,0]) # classic
+    #     controlledPoints.addObject(
+    #         'MechanicalObject',
+    #         name='actuatedPoints',
+    #         template='Rigid3',
+    #         position=[0, 0, h_effector, 0.0, 0.0, 0.0, 1.0],
+    #     )  # ,rotation=[0, 90 ,0]) # rigid pour l'orientation
+    #     controlledPoints.addObject(
+    #         'PositionEffector',
+    #         template='Vec3d',
+    #         indices='0',
+    #         effectorGoal='@../../goal/goalM0.position',
+    #     )  # classic
+    #     controlledPoints.addObject(
+    #         'BarycentricMapping', mapForces=False, mapMasses=False
+    #     )
+    #     rootNode.addObject(
+    #         'QPInverseProblemSolver',
+    #         name='QP',
+    #         printLog='0',
+    #         saveMatrices=True,
+    #         epsilon=0.01,
+    #     )  # initialement epsilon = 0.001
+    #     rootNode.addObject(
+    #         GoalKeyboardController(goal_pas=1, node=goal, name='goalM0')
+    #     )
+    # else:
+    rootNode.addObject(
+        'GenericConstraintSolver',
+        maxIterations='100',
+        tolerance='0.0000001',
+    )
+    rootNode.addObject(PressureController(pas=1, parent=pneumatic))
 
     if CONSTRAIN:
         if HELIX:
@@ -624,12 +637,23 @@ def createScene(rootNode):
                     showObjectScale=2,
                 )
 
-                helix_node.addObject(
-                    'MeshSpringForceField',
-                    name=f'helixA_spring_{n}',
-                    stiffness=100000,
-                    damping=0.1,
-                )
+                if CONSTRAIN_BY_SPRING:
+                    helix_node.addObject(
+                        'MeshSpringForceField',
+                        name=f'helixA_spring_{n}',
+                        stiffness=100000,
+                        # damping=0.1,
+                    )
+                if CONSTRAIN_BY_CABLE:
+                    helix_node.addObject(
+                        'CableConstraint',
+                        indices=list(range(len(helix_points))),
+                        valueType='displacement',
+                        value=0,
+                        hasPullPoint=False,
+                        drawPoints=False,
+                        drawPullPoint=False,
+                    )
                 helix_node.addObject('SkinningMapping')
 
             for n in range(num_thread):
@@ -659,13 +683,23 @@ def createScene(rootNode):
                     showObject=True,
                     showObjectScale=2,
                 )
-
-                helix_node.addObject(
-                    'MeshSpringForceField',
-                    name=f'helixB_spring_{n}',
-                    stiffness=100000,
-                    damping=0.1,
-                )
+                if CONSTRAIN_BY_SPRING:
+                    helix_node.addObject(
+                        'MeshSpringForceField',
+                        name=f'helixB_spring_{n}',
+                        stiffness=100000,
+                        # damping=0.1,
+                    )
+                if CONSTRAIN_BY_CABLE:
+                    helix_node.addObject(
+                        'CableConstraint',
+                        indices=list(range(len(helix_points))),
+                        valueType='displacement',
+                        value=0,
+                        hasPullPoint=False,
+                        drawPoints=False,
+                        drawPullPoint=False,
+                    )
                 helix_node.addObject('SkinningMapping')
 
                 # Create circular mesh on the top and bottom of the cylinder
@@ -694,25 +728,25 @@ def createScene(rootNode):
                     top_points, top_triangles = create_circular_mesh(
                         radius, num_segments, height + min_z
                     )
-                    top_node = pneumatic.addChild('topCircularMesh')
+                    top_node = pneumatic.addChild(f'topCircularMesh_{radius}')
                     top_node.addObject(
                         'MeshTopology',
-                        name='topTopology',
+                        name=f'topTopology_{radius}',
                         position=top_points,
                         triangles=top_triangles,
                     )
                     top_node.addObject(
                         'MechanicalObject',
-                        name='topPoints',
+                        name=f'topPoints_{radius}',
                         position=top_points,
                         showObject=True,
                         showObjectScale=2,
                     )
                     top_node.addObject(
                         'MeshSpringForceField',
-                        name='topSprings',
-                        stiffness=1000000,
-                        damping=0.1,
+                        name=f'topSprings_{radius}',
+                        stiffness=10000000,
+                        # damping=0.1,
                     )
                     top_node.addObject('SkinningMapping')
 
@@ -720,25 +754,27 @@ def createScene(rootNode):
                     bottom_points, bottom_triangles = create_circular_mesh(
                         radius, num_segments, min_z
                     )
-                    bottom_node = pneumatic.addChild('bottomCircularMesh')
+                    bottom_node = pneumatic.addChild(
+                        f'bottomCircularMesh_{radius}'
+                    )
                     bottom_node.addObject(
                         'MeshTopology',
-                        name='bottomTopology',
+                        name=f'bottomTopology_{radius}',
                         position=bottom_points,
                         triangles=bottom_triangles,
                     )
                     bottom_node.addObject(
                         'MechanicalObject',
-                        name='bottomPoints',
+                        name=f'bottomPoints_{radius}',
                         position=bottom_points,
                         showObject=True,
                         showObjectScale=2,
                     )
                     bottom_node.addObject(
                         'MeshSpringForceField',
-                        name='bottomSprings',
-                        stiffness=1000000,
-                        damping=0.1,
+                        name=f'bottomSprings_{radius}',
+                        stiffness=10000000,
+                        # damping=0.1,
                     )
                     bottom_node.addObject('SkinningMapping')
 
@@ -760,7 +796,21 @@ def createScene(rootNode):
         name='ldlsolveur',
         template='CompressedRowSparseMatrixMat3x3d',
     )
-    pneumatic.addObject('EulerImplicitSolver', firstOrder='1', vdamping=0)
+    # pneumatic.addObject(
+    #     'CGLinearSolver',
+    #     name='linearSolver',
+    #     iterations=1000,
+    #     threshold=1e-5,
+    #     tolerance=1e-5,
+    #     template="CompressedRowSparseMatrixMat3x3d",
+    # )
+    pneumatic.addObject(
+        'EulerImplicitSolver',
+        firstOrder=False,
+        rayleighStiffness=0.1,
+        rayleighMass=0.1,
+        vdamping=0,
+    )
     pneumatic.addObject('GenericConstraintCorrection')
 
     # return rootNode
