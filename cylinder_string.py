@@ -148,119 +148,151 @@ class PressureController(
         # self.pressure.value = [pressureValue]
         # print('Pression cavité ', pressureValue)
 
+
 ############################################################################################################
 # from stlib3.physics.mixedmaterial import rigidification
 # Copied here to change template
 
 
 def getBarycenter(selectedPoints):
-    poscenter = [0., 0., 0.]
+    poscenter = [0.0, 0.0, 0.0]
     if len(selectedPoints) != 0:
-            poscenter = sdiv(sum(selectedPoints), float(len(selectedPoints)))
+        poscenter = sdiv(sum(selectedPoints), float(len(selectedPoints)))
     return poscenter
 
 
-
 def Rigidify(targetObject, sourceObject, groupIndices, frames=None, name=None):
-        """ Transform a deformable object into a mixed one containing both rigid and deformable parts.
+    """Transform a deformable object into a mixed one containing both rigid and deformable parts.
 
-            :param targetObject: parent node where to attach the final object.
-            :param sourceObject: node containing the deformable object. The object should be following
-                                 the ElasticMaterialObject template.
-            :param list groupIndices: array of array indices to rigidify. The length of the array should be equal to the number
-                                      of rigid component.
-            :param list frames: array of frames. The length of the array should be equal to the number
-                                of rigid component. The orientation are given in eulerAngles (in degree) by passing
-                                three values or using a quaternion by passing four values.
-                                [[rx,ry,rz], [qx,qy,qz,w]]
-                                User can also specify the position of the frame by passing six values (position and orientation in degree)
-                                or seven values (position and quaternion).
-                                [[x,y,z,rx,ry,rz], [x,y,z,qx,qy,qz,w]]
-                                If the position is not specified, the position of the rigids will be the barycenter of the region to rigidify.
-            :param str name: specify the name of the Rigidified object, is none provided use the name of the SOurceObject.
-        """
-        if frames is None:
-            frames = [[0., 0., 0.]]*len(groupIndices)
+    :param targetObject: parent node where to attach the final object.
+    :param sourceObject: node containing the deformable object. The object should be following
+                         the ElasticMaterialObject template.
+    :param list groupIndices: array of array indices to rigidify. The length of the array should be equal to the number
+                              of rigid component.
+    :param list frames: array of frames. The length of the array should be equal to the number
+                        of rigid component. The orientation are given in eulerAngles (in degree) by passing
+                        three values or using a quaternion by passing four values.
+                        [[rx,ry,rz], [qx,qy,qz,w]]
+                        User can also specify the position of the frame by passing six values (position and orientation in degree)
+                        or seven values (position and quaternion).
+                        [[x,y,z,rx,ry,rz], [x,y,z,qx,qy,qz,w]]
+                        If the position is not specified, the position of the rigids will be the barycenter of the region to rigidify.
+    :param str name: specify the name of the Rigidified object, is none provided use the name of the SOurceObject.
+    """
+    if frames is None:
+        frames = [[0.0, 0.0, 0.0]] * len(groupIndices)
 
-        assert len(groupIndices) == len(frames), "size mismatch."
+    assert len(groupIndices) == len(frames), "size mismatch."
 
-        if name is None:
-            name = sourceObject.name
+    if name is None:
+        name = sourceObject.name
 
-        # sourceObject.reinit()
-        ero = targetObject.addChild(name)
+    # sourceObject.reinit()
+    ero = targetObject.addChild(name)
 
-        allPositions = sourceObject.dofs.position.value
-        allIndices =list(range(len(allPositions)))
+    allPositions = sourceObject.dofs.position.value
+    allIndices = list(range(len(allPositions)))
 
-        rigids = []
-        indicesMap = []
+    rigids = []
+    indicesMap = []
 
-        def mfilter(si, ai, pts):
-                tmp = []
-                for i in ai:
-                        if i in si:
-                                tmp.append(pts[i])
-                return tmp
+    def mfilter(si, ai, pts):
+        tmp = []
+        for i in ai:
+            if i in si:
+                tmp.append(pts[i])
+        return tmp
 
-        # get all the points from the source.
-        selectedIndices = []
-        for i in range(len(groupIndices)):
-                selectedPoints = mfilter(groupIndices[i], allIndices, allPositions)
-                if len(frames[i]) == 3:
-                        orientation = Quat.createFromEuler(frames[i], inDegree=True)
-                        poscenter = getBarycenter(selectedPoints)
-                elif len(frames[i]) == 4:
-                        orientation = frames[i]
-                        poscenter = getBarycenter(selectedPoints)
-                elif len(frames[i]) == 6:
-                        orientation = Quat.createFromEuler([frames[i][3], frames[i][4], frames[i][5]], inDegree=True)
-                        poscenter = [frames[i][0], frames[i][1], frames[i][2]]
-                elif len(frames[i]) == 7:
-                        orientation = [frames[i][3], frames[i][4], frames[i][5], frames[i][6]]
-                        poscenter = [frames[i][0], frames[i][1], frames[i][2]]
-                else:
-                        Sofa.msg_error("Do not understand the size of a frame.")
+    # get all the points from the source.
+    selectedIndices = []
+    for i in range(len(groupIndices)):
+        selectedPoints = mfilter(groupIndices[i], allIndices, allPositions)
+        if len(frames[i]) == 3:
+            orientation = Quat.createFromEuler(frames[i], inDegree=True)
+            poscenter = getBarycenter(selectedPoints)
+        elif len(frames[i]) == 4:
+            orientation = frames[i]
+            poscenter = getBarycenter(selectedPoints)
+        elif len(frames[i]) == 6:
+            orientation = Quat.createFromEuler(
+                [frames[i][3], frames[i][4], frames[i][5]], inDegree=True
+            )
+            poscenter = [frames[i][0], frames[i][1], frames[i][2]]
+        elif len(frames[i]) == 7:
+            orientation = [
+                frames[i][3],
+                frames[i][4],
+                frames[i][5],
+                frames[i][6],
+            ]
+            poscenter = [frames[i][0], frames[i][1], frames[i][2]]
+        else:
+            Sofa.msg_error("Do not understand the size of a frame.")
 
-                rigids.append(poscenter + list(orientation))
+        rigids.append(poscenter + list(orientation))
 
-                selectedIndices += map(lambda x: x, groupIndices[i])
-                indicesMap += [i] * len(groupIndices[i])
+        selectedIndices += map(lambda x: x, groupIndices[i])
+        indicesMap += [i] * len(groupIndices[i])
 
-        otherIndices = list(filter(lambda x: x not in selectedIndices, allIndices))
-        Kd = {v: None for k, v in enumerate(allIndices)}
-        Kd.update({v: [0, k] for k, v in enumerate(otherIndices)})
-        Kd.update({v: [1, k] for k, v in enumerate(selectedIndices)})
-        indexPairs = [v for kv in Kd.values() for v in kv]
+    otherIndices = list(filter(lambda x: x not in selectedIndices, allIndices))
+    Kd = {v: None for k, v in enumerate(allIndices)}
+    Kd.update({v: [0, k] for k, v in enumerate(otherIndices)})
+    Kd.update({v: [1, k] for k, v in enumerate(selectedIndices)})
+    indexPairs = [v for kv in Kd.values() for v in kv]
 
-        freeParticules = ero.addChild("DeformableParts")
-        freeParticules.addObject("MechanicalObject", template="Rigid3", name="dofs",
-                                    position=[allPositions[i] for i in otherIndices])
+    freeParticules = ero.addChild("DeformableParts")
+    freeParticules.addObject(
+        "MechanicalObject",
+        template="Rigid3",
+        name="dofs",
+        position=[allPositions[i] for i in otherIndices],
+    )
 
-        rigidParts = ero.addChild("RigidParts")
-        rigidParts.addObject("MechanicalObject", template="Rigid3", name="dofs", reserve=len(rigids), position=rigids)
+    rigidParts = ero.addChild("RigidParts")
+    rigidParts.addObject(
+        "MechanicalObject",
+        template="Rigid3",
+        name="dofs",
+        reserve=len(rigids),
+        position=rigids,
+    )
 
-        rigidifiedParticules = rigidParts.addChild("RigidifiedParticules")
-        rigidifiedParticules.addObject("MechanicalObject", template="Rigid3", name="dofs",
-                                          position=[allPositions[i] for i in selectedIndices])
-        rigidifiedParticules.addObject("RigidMapping", name="mapping", globalToLocalCoords=True, rigidIndexPerPoint=indicesMap)
+    rigidifiedParticules = rigidParts.addChild("RigidifiedParticules")
+    rigidifiedParticules.addObject(
+        "MechanicalObject",
+        template="Rigid3",
+        name="dofs",
+        position=[allPositions[i] for i in selectedIndices],
+    )
+    rigidifiedParticules.addObject(
+        "RigidMapping",
+        name="mapping",
+        globalToLocalCoords=True,
+        rigidIndexPerPoint=indicesMap,
+    )
 
-        if "solver" in sourceObject.objects:
-            sourceObject.removeObject(sourceObject.solver)
-        if "integration" in sourceObject.objects:
-            sourceObject.removeObject(sourceObject.integration)
-        if "correction" in sourceObject.objects:
-            sourceObject.removeObject(sourceObject.correction)
+    if "solver" in sourceObject.objects:
+        sourceObject.removeObject(sourceObject.solver)
+    if "integration" in sourceObject.objects:
+        sourceObject.removeObject(sourceObject.integration)
+    if "correction" in sourceObject.objects:
+        sourceObject.removeObject(sourceObject.correction)
 
-        sourceObject.addObject("SubsetMultiMapping", name="mapping", template="Rigid3,Rigid3",
-                              input=[freeParticules.dofs.getLinkPath(),rigidifiedParticules.dofs.getLinkPath()],
-                              output=sourceObject.dofs.getLinkPath(),
-                              indexPairs=indexPairs)
+    sourceObject.addObject(
+        "SubsetMultiMapping",
+        name="mapping",
+        template="Rigid3,Rigid3",
+        input=[
+            freeParticules.dofs.getLinkPath(),
+            rigidifiedParticules.dofs.getLinkPath(),
+        ],
+        output=sourceObject.dofs.getLinkPath(),
+        indexPairs=indexPairs,
+    )
 
-        rigidifiedParticules.addChild(sourceObject)
-        freeParticules.addChild(sourceObject)
-        return ero
-
+    rigidifiedParticules.addChild(sourceObject)
+    freeParticules.addChild(sourceObject)
+    return ero
 
 
 def FixBasePosition(node):
@@ -379,13 +411,13 @@ def createCavity(
         poissonRatio=0.49,
     )
 
-    triangleIndices = list(range(len(bellowNode.MeshLoader.triangles)))
-    bellowNode.addObject(
-        'SurfacePressureForceField',
-        name='SPC',
-        triangleIndices=triangleIndices,
-        pressure=0,
-    )
+    # triangleIndices = list(range(len(bellowNode.MeshLoader.triangles)))
+    # bellowNode.addObject(
+    #     'SurfacePressureForceField',
+    #     name='SPC',
+    #     triangleIndices=triangleIndices,
+    #     pressure=0,
+    # )
 
     # bellowNode.addObject('Meshcontainer', src='@MeshLoader', name='Cavity')
     # bellowNode.addObject(
@@ -403,26 +435,23 @@ def createCavity(
     # )  # stable youngModulus = 500 / réel ? = 103
     # bellowNode.addObject('UniformMass', totalMass=1000, rayleighMass=0)
 
-    # if inverse_flag == True:
-    #     bellowNode.addObject(
-    #         'SurfacePressureActuator',
-    #         name='SPC',
-    #         template='Vec3d',
-    #         triangles='@chambreAMesh' + str(i + 1) + '.triangles',
-    #         minPressure=0,
-    #         maxPressure=300,
-    #     )  # ,maxPressureVariation = 20)#,valueType=self.value_type)
-    # elif inverse_flag == False:
-    #     bellowNode.addObject(
-    #         'SurfacePressureConstraint',
-    #         name='SPC',
-    #         triangles='@chambreAMesh' + str(i + 1) + '.triangles',
-    #         value=0,
-    #         minPressure=0,
-    #         maxPressure=300,
-    #         valueType="pressure",
-    #     )  # ,maxPressureVariation = 20)#,
-
+    chamber_node = bellowNode.addChild('Chamber')
+    chamber_node.addObject(
+        'MechanicalObject',
+        name='chamber',
+        position='@../dofs.position',
+        template='Vec3',
+    )
+    chamber_node.addObject(
+        'SurfacePressureConstraint',
+        name='SPC',
+        triangles='@chambreAMesh' + str(i + 1) + '.triangles',
+        value=0,
+        minPressure=0,
+        maxPressure=300,
+        valueType='pressure',
+    )  # ,maxPressureVariation = 20)#,
+    chamber_node.addObject('SkinningMapping')
     # visu = bellowNode.addChild('Visu')
     # visu.addObject('OglModel', src=bellowNode.topology.getLinkPath())
     # visu.addObject('IdentityMapping')
