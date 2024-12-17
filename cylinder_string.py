@@ -414,7 +414,7 @@ def createCavity(
         showTriangle=True,
         thickness=1,  # 'm'
         showMeasuredValue=True,
-        youngModulus=100,  # 'Pa'
+        youngModulus=10000,  # 'Pa'
         poissonRatio=0.49,
     )
 
@@ -583,7 +583,7 @@ def createScene(rootNode):
         maxIterations='100',
         tolerance='0.0000001',
     )
-    rootNode.addObject(PressureController(pas=0.05, parent=chamber_node))
+    rootNode.addObject(PressureController(pas=1, parent=chamber_node))
 
     if CONSTRAIN:
         if HELIX:
@@ -611,7 +611,7 @@ def createScene(rootNode):
 
             for n in range(num_thread):
                 helix_points = []
-                for i in range(num_points * num_turns):
+                for i in range(num_points * num_turns+1):
                     angle = i * angle_step
                     z = min_z + (i / num_points) * (height / num_turns)
                     x = helix_radius * cos(angle + n * phase_step)
