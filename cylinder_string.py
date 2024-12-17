@@ -126,34 +126,34 @@ class PressureController(
     def onKeypressedEvent(self, e):
 
         # SurfacePressureForceField
-        pressureValue = self.pressure.pressure.value
-        if e['key'] == Key.A:
-            pressureValue += self.pas
-            # print('===========D')
-            if pressureValue > self.max_pression:
-                pressureValue = self.max_pression
-        if e['key'] == Key.Q:
-            pressureValue -= self.pas
-            if pressureValue < 0:
-                pressureValue = 0
-
-        self.pressure.pressure.value = pressureValue
-        print('Pression cavité ', pressureValue)
-
-        # pressureValue = self.pressure.value.value[0]
-
-        # if e["key"] == Key.A:
+        # pressureValue = self.pressure.pressure.value
+        # if e['key'] == Key.A:
         #     pressureValue += self.pas
         #     # print('===========D')
         #     if pressureValue > self.max_pression:
         #         pressureValue = self.max_pression
-        # if e["key"] == Key.Q:
+        # if e['key'] == Key.Q:
         #     pressureValue -= self.pas
         #     if pressureValue < 0:
         #         pressureValue = 0
 
-        # self.pressure.value = [pressureValue]
+        # self.pressure.pressure.value = pressureValue
         # print('Pression cavité ', pressureValue)
+
+        pressureValue = self.pressure.value.value[0]
+
+        if e["key"] == Key.A:
+            pressureValue += self.pas
+            # print('===========D')
+            if pressureValue > self.max_pression:
+                pressureValue = self.max_pression
+        if e["key"] == Key.Q:
+            pressureValue -= self.pas
+            if pressureValue < 0:
+                pressureValue = 0
+
+        self.pressure.value = [pressureValue]
+        print('Pression cavité ', pressureValue)
 
 
 ############################################################################################################
@@ -467,7 +467,7 @@ def createCavity(
 
     # RigidifyTopAndBase(parent_node=parent, node=bellowNode)
 
-    return bellowNode
+    return bellowNode, chamber_node
 
 
 def createScene(rootNode):
@@ -529,7 +529,7 @@ def createScene(rootNode):
     # fichier =  'parametric_cavity_sliced2.stl'
     fichier = 'cylinder.stl'
 
-    pneumatic = createCavity(
+    pneumatic, chamber_node = createCavity(
         parent=rootNode,
         name_c='cavity',
         i=1,
@@ -583,7 +583,7 @@ def createScene(rootNode):
         maxIterations='100',
         tolerance='0.0000001',
     )
-    rootNode.addObject(PressureController(pas=1, parent=pneumatic))
+    rootNode.addObject(PressureController(pas=0.05, parent=chamber_node))
 
     if CONSTRAIN:
         if HELIX:
@@ -807,8 +807,8 @@ def createScene(rootNode):
     pneumatic.addObject(
         'EulerImplicitSolver',
         firstOrder=False,
-        rayleighStiffness=0.1,
-        rayleighMass=0.1,
+        rayleighStiffness=0.2,
+        rayleighMass=0.2,
         vdamping=0,
     )
     pneumatic.addObject('GenericConstraintCorrection')
